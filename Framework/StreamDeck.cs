@@ -114,10 +114,5 @@ namespace StreamDeck.Framework
             Logger.Log("StreamDeck", "Could not find StreamDeck USB device!", LoggerVerbosity.Error);
             return null;
         }
-
-        public static void Dummy()
-        {
-            Console.WriteLine("Dummy");
-        }
     }
 }
