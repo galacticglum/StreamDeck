@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Threading;
 using HidSharp;
 
 namespace StreamDeck.Framework
@@ -29,6 +30,8 @@ namespace StreamDeck.Framework
 
         private static readonly HidDevice streamDeckDevice;
         private static readonly HidStream deviceStream;
+        private static readonly Thread readThread;
+
         private static readonly bool[] keyState;
 
         public static event KeyPressedEventHandler KeyPressed;
@@ -55,8 +58,12 @@ namespace StreamDeck.Framework
 
             Logger.Log("StreamDeck", "Opened data stream on StreamDeck USB device.");
 
+            AppDomain.CurrentDomain.ProcessExit += Shutdown;
+
             keyState = new bool[numKeys];
-            Read();
+
+            readThread = new Thread(Read);
+            readThread.Start();
         }
 
         private static void Read()
@@ -113,6 +120,13 @@ namespace StreamDeck.Framework
 
             Logger.Log("StreamDeck", "Could not find StreamDeck USB device!", LoggerVerbosity.Error);
             return null;
+        }
+
+
+        private static void Shutdown(object sender, EventArgs eventArgs)
+        {
+            Logger.Log("StreamDeck", "Shutting down StreamDack handler!");
+            readThread.Abort();
         }
     }
 }

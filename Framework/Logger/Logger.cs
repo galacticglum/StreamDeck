@@ -32,7 +32,7 @@ namespace StreamDeck.Framework
             AppDomain.CurrentDomain.ProcessExit += (sender, args) => WriteLogBufferToFile();
         }
 
-        public static void Log(string category, string message, LoggerVerbosity messageVerbosity = LoggerVerbosity.Info, bool logUps = false, bool logFps = false)
+        public static void Log(string category, object message, LoggerVerbosity messageVerbosity = LoggerVerbosity.Info, bool logUps = false, bool logFps = false)
         {
             lock (Console.Out)
             {
@@ -62,7 +62,7 @@ namespace StreamDeck.Framework
             }
         }
 
-        public static void Log(string message, LoggerVerbosity messageVerbosity = LoggerVerbosity.Info)
+        public static void Log(object message, LoggerVerbosity messageVerbosity = LoggerVerbosity.Info)
         {
             Log(string.Empty, message, messageVerbosity);
         }
