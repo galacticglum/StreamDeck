@@ -6,10 +6,11 @@ using System.Threading.Tasks;
 
 namespace Example
 {
-    class Program
+    public class Program
     {
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
+            StreamDeck.Framework.StreamDeck.FindUSBDevice();
         }
     }
 }
