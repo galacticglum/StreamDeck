@@ -28,6 +28,8 @@ namespace StreamDeck.Framework
                 // Second parameter doesn't matter, if the key AllCategoryVerbosities is in the dictionary then it just logs any category.
                 {AllCategoryVerbosities, LoggerVerbosity.Info}
             };
+
+            AppDomain.CurrentDomain.ProcessExit += (sender, args) => WriteLogBufferToFile();
         }
 
         public static void Log(string category, string message, LoggerVerbosity messageVerbosity = LoggerVerbosity.Info, bool logUps = false, bool logFps = false)
