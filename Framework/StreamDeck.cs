@@ -1,15 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
-using System.IO;
 using System.Linq;
-using System.Runtime;
 using System.Runtime.InteropServices;
-using System.Runtime.Remoting.Messaging;
-using System.Security.Cryptography;
 using System.Threading;
 using HidSharp;
 
@@ -43,17 +38,23 @@ namespace StreamDeck.Framework
         private static readonly Thread readThread;
 
         private static readonly bool[] keyState;
+        private static readonly Dictionary<int, KeyPressedEventHandler> keyPressed;
+        private static readonly Dictionary<int, KeyReleasedEventHandler> keyReleased;
 
-        public static event KeyPressedEventHandler KeyPressed;
+        public static event KeyPressedEventHandler AnyKeyPressed;
         private static void OnKeyPressed(KeyEventArgs args)
         {
-            KeyPressed?.Invoke(args);
+            AnyKeyPressed?.Invoke(args);
+            if (!keyPressed.ContainsKey(args.KeyId)) return;
+            keyPressed[args.KeyId]?.Invoke(args);
         }
 
-        public static event KeyReleasedEventHandler KeyReleased;
+        public static event KeyReleasedEventHandler AnyKeyReleased;
         private static void OnKeyReleased(KeyEventArgs args)
         {
-            KeyReleased?.Invoke(args);
+            AnyKeyReleased?.Invoke(args);
+            if (!keyReleased.ContainsKey(args.KeyId)) return;
+            keyReleased[args.KeyId]?.Invoke(args);
         }
 
         static StreamDeck()
@@ -71,6 +72,8 @@ namespace StreamDeck.Framework
             AppDomain.CurrentDomain.ProcessExit += Shutdown;
 
             keyState = new bool[numKeys];
+            keyPressed = new Dictionary<int, KeyPressedEventHandler>();
+            keyReleased = new Dictionary<int, KeyReleasedEventHandler>();
 
             readThread = new Thread(Read);
             readThread.Start();
@@ -321,6 +324,48 @@ namespace StreamDeck.Framework
             }
 
             return data;
+        }
+
+        public static void RegisterKeyPressed(int key, KeyPressedEventHandler eventHandler)
+        {
+            if (keyPressed.ContainsKey(key))
+            {
+                keyPressed[key] += eventHandler;
+            }
+            else
+            {
+                keyPressed[key] = eventHandler;
+            }
+        }
+
+
+        public static void UnregisterKeyPressed(int key, KeyPressedEventHandler eventHandler)
+        {
+            if (keyPressed.ContainsKey(key))
+            {
+                keyPressed[key] -= eventHandler;
+            }
+        }
+
+        public static void RegisterKeyReleased(int key, KeyReleasedEventHandler eventHandler)
+        {
+            if (keyReleased.ContainsKey(key))
+            {
+                keyReleased[key] += eventHandler;
+            }
+            else
+            {
+                keyReleased[key] = eventHandler;
+            }
+        }
+
+
+        public static void UnregisterKeyReleased(int key, KeyReleasedEventHandler eventHandler)
+        {
+            if (keyReleased.ContainsKey(key))
+            {
+                keyReleased[key] -= eventHandler;
+            }
         }
     }
 }
