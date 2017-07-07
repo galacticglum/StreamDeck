@@ -1,8 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Linq;
 using System.Runtime;
+using System.Runtime.InteropServices;
 using System.Runtime.Remoting.Messaging;
+using System.Security.Cryptography;
 using System.Threading;
 using HidSharp;
 
@@ -143,6 +149,73 @@ namespace StreamDeck.Framework
             byte[] pixels = {colour.B, colour.G, colour.R};
             WritePage1(key, Alloc(numFirstPagePixels * 3, pixels));
             WritePage2(key, Alloc(numSecondPagePixels * 3, pixels));
+        }
+
+        public static void FillImage(int key, string filePath)
+        {
+            Image image = Image.FromFile(filePath);
+            Rectangle destRect = new Rectangle(0, 0, iconSize, iconSize);
+            Bitmap bitmap = new Bitmap(iconSize, iconSize);
+            bitmap.SetResolution(image.HorizontalResolution, image.VerticalResolution);
+
+            using (Graphics graphics = Graphics.FromImage(bitmap))
+            {
+                graphics.CompositingMode = CompositingMode.SourceCopy;
+                graphics.CompositingQuality = CompositingQuality.HighQuality;
+                graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                graphics.SmoothingMode = SmoothingMode.HighQuality;
+                graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+
+                using (ImageAttributes wrapMode = new ImageAttributes())
+                {
+                    wrapMode.SetWrapMode(WrapMode.TileFlipXY);
+                    graphics.DrawImage(image, destRect, 0, 0, image.Width, image.Height, GraphicsUnit.Pixel, wrapMode);
+                }
+            }
+
+            BitmapData data = bitmap.LockBits(new Rectangle(Point.Empty, bitmap.Size), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+            byte[] buffer = new byte[data.Height * data.Stride];
+            Marshal.Copy(data.Scan0, buffer, 0, buffer.Length);
+
+            FillImage(key, buffer);
+        }
+
+        public static void FillImage(int key, byte[] imageBuffer)
+        {
+            if (!IsValidKey(key))
+            {
+                Logger.Log("StreamDeck", $"FillImage: Received invalid key(id={key}) to fill colour. ");
+                return;
+            }
+
+            const int imageBufferRange = 15552;
+            if (imageBuffer.Length != imageBufferRange)
+            {
+                Logger.Log("StreamDeck", $"FillImage: Expected buffer buffer of length {imageBufferRange}, got length {imageBuffer.Length}", LoggerVerbosity.Warning);
+                return;
+            }
+
+            List<byte> pixels = new List<byte>();
+            for (int x = 0; x < iconSize; x++)
+            {
+                List<byte> row = new List<byte>();
+                int offset = x * 3 * iconSize;
+                for (int i = offset; i < offset + iconSize * 3; i += 3)
+                {
+                    byte r = imageBuffer[i];
+                    byte g = imageBuffer[i + 1];
+                    byte b = imageBuffer[i + 2];
+                    row.AddRange(new[] { r, g, b });
+                }
+
+                row.Reverse();
+                pixels = pixels.Concat(row).ToList();
+            }
+
+            byte[] firstPagePixels = pixels.Take(numFirstPagePixels * 3).ToArray();
+            byte[] secondPagePixels = pixels.Skip(numFirstPagePixels * 3).Take(numTotalPixels * 3).ToArray();
+            WritePage1(key, firstPagePixels);
+            WritePage2(key, secondPagePixels);
         }
 
         private static byte[] Alloc(int size, IReadOnlyList<byte> fill)
