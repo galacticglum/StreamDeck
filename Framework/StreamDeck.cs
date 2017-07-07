@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.IO;
 using System.Linq;
 using System.Runtime;
 using System.Runtime.InteropServices;
@@ -142,7 +143,7 @@ namespace StreamDeck.Framework
         {
             if (!IsValidKey(key))
             {
-                Logger.Log("StreamDeck", $"FillColour: Received invalid key(id={key}) to fill colour. ");
+                Logger.Log("StreamDeck", $"FillColour: Received invalid key(id={key}). ");
                 return;
             }
 
@@ -184,7 +185,7 @@ namespace StreamDeck.Framework
         {
             if (!IsValidKey(key))
             {
-                Logger.Log("StreamDeck", $"FillImage: Received invalid key(id={key}) to fill colour. ");
+                Logger.Log("StreamDeck", $"FillImage: Received invalid key(id={key}). ");
                 return;
             }
 
@@ -216,6 +217,32 @@ namespace StreamDeck.Framework
             byte[] secondPagePixels = pixels.Skip(numFirstPagePixels * 3).Take(numTotalPixels * 3).ToArray();
             WritePage1(key, firstPagePixels);
             WritePage2(key, secondPagePixels);
+        }
+
+        public static void Clear(int key)
+        {
+            if (!IsValidKey(key))
+            {
+                Logger.Log("StreamDeck", $"Clear: Received invalid key(id={key}). ");
+                return;
+            }
+
+            FillColour(key, new Colour(0, 0, 0));
+        }
+
+        public static void SetBrightness(int percentage)
+        {
+            if (percentage < 0)
+            {
+                percentage = 0;
+            }
+
+            if (percentage > 100)
+            {
+                percentage = 100;
+            }
+
+            SendFeatureReport(PadToLength(new byte[] { 0x05, 0x55, 0xaa, 0xd1, 0x01, (byte)percentage }, 17));
         }
 
         private static byte[] Alloc(int size, IReadOnlyList<byte> fill)
@@ -276,6 +303,11 @@ namespace StreamDeck.Framework
         private static byte[] Pad(int length)
         {
             return new byte[length];
+        }
+
+        private static void SendFeatureReport(byte[] buffer)
+        {
+            deviceStream.SetFeature(buffer);
         }
 
         private static byte[] Concat(params byte[][] arrays)

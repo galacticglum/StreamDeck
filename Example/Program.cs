@@ -8,7 +8,8 @@ namespace Example
         {
             StreamDeck.Framework.StreamDeck.KeyPressed += OnKeyPressed;
             //StreamDeck.Framework.StreamDeck.FillColour(0, new Colour(0, 255, 0));
-            StreamDeck.Framework.StreamDeck.FillImage(0, "Data/Test.png");
+            //StreamDeck.Framework.StreamDeck.FillImage(0, "Data/Test.png");
+            StreamDeck.Framework.StreamDeck.SetBrightness(100);
         }
 
         private static void OnKeyPressed(KeyEventArgs args)
