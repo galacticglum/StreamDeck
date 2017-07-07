@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Runtime;
+using System.Runtime.Remoting.Messaging;
 using System.Threading;
 using HidSharp;
 
@@ -127,6 +130,92 @@ namespace StreamDeck.Framework
         {
             Logger.Log("StreamDeck", "Shutting down StreamDack handler!");
             readThread.Abort();
+        }
+
+        public static void FillColour(int key, Colour colour)
+        {
+            if (!IsValidKey(key))
+            {
+                Logger.Log("StreamDeck", $"FillColour: Received invalid key(id={key}) to fill colour. ");
+                return;
+            }
+
+            byte[] pixels = {colour.B, colour.G, colour.R};
+            WritePage1(key, Alloc(numFirstPagePixels * 3, pixels));
+            WritePage2(key, Alloc(numSecondPagePixels * 3, pixels));
+        }
+
+        private static byte[] Alloc(int size, IReadOnlyList<byte> fill)
+        {
+            byte[] buffer = new byte[size];
+            for (int i = 0; i < buffer.Length; i+=fill.Count)
+            {
+                for (int j = 0; j < fill.Count; j++)
+                {
+                    buffer[i + j] = fill[j];
+                }
+            }
+
+            return buffer; 
+        }
+
+        private static bool IsValidKey(int key)
+        {
+            return key > 0 || key < numKeys - 1;
+        }
+
+        private static void Write(byte[] buffer)
+        {
+            deviceStream.Write(buffer);
+        }
+
+        private static void WritePage1(int key, byte[] buffer)
+        {
+            byte[] header =
+            {
+                0x02, 0x01, 0x01, 0x00, 0x00, (byte)(key + 1), 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x42, 0x4d, 0xf6, 0x3c, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x36, 0x00, 0x00, 0x00, 0x28, 0x00,
+                0x00, 0x00, 0x48, 0x00, 0x00, 0x00, 0x48, 0x00,
+                0x00, 0x00, 0x01, 0x00, 0x18, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0xc0, 0x3c, 0x00, 0x00, 0xc4, 0x0e,
+                0x00, 0x00, 0xc4, 0x0e, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+            };
+
+            byte[] packet = PadToLength(Concat(header, buffer), pagePacketSize);
+            Write(packet);
+        }
+
+        private static void WritePage2(int key, byte[] buffer)
+        {
+            byte[] header = {0x02, 0x01, 0x02, 0x00, 0x01, (byte) (key + 1)};
+            byte[] packet = PadToLength(Concat(header, Pad(10), buffer), pagePacketSize);
+            Write(packet);
+        }
+
+        private static byte[] PadToLength(byte[] buffer, int length)
+        {
+            return Concat(buffer, Pad(length - buffer.Length));
+        }
+
+        private static byte[] Pad(int length)
+        {
+            return new byte[length];
+        }
+
+        private static byte[] Concat(params byte[][] arrays)
+        {
+            byte[] data = new byte[arrays.Sum(arr => arr.Length)];
+            int offset = 0;
+            foreach (byte[] array in arrays)
+            {
+                Buffer.BlockCopy(array, 0, data, offset, array.Length);
+                offset += array.Length;
+            }
+
+            return data;
         }
     }
 }

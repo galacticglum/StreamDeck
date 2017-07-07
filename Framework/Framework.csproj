@@ -48,6 +48,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Colour.cs" />
     <Compile Include="Logger\Logger.cs" />
     <Compile Include="Logger\LoggerTimeStampMode.cs" />
     <Compile Include="Logger\LoggerVerbosity.cs" />
